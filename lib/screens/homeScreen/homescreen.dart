@@ -1,8 +1,11 @@
+// import 'dart:html';
+
 import 'package:flutter/material.dart';
 import 'package:whatsapp/const/app_const.dart';
 import 'package:sizer/sizer.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:whatsapp/screens/homeScreen/contacts/contacts.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../sharedPreference/sharedPreference.dart';
 import 'chatScreen/chatScreen.dart';
@@ -22,6 +25,52 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     // tabController = TabController(length: 3, vsync: this);
+  }
+
+  Future<void> askPermission() async {
+    PermissionStatus permissionStatus = await _getContactPermission();
+    if (permissionStatus == PermissionStatus.granted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => const Contacts(),
+        ),
+      );
+    } else {
+      _handleInvalidPermissions(permissionStatus);
+    }
+  }
+
+  void _handleInvalidPermissions(PermissionStatus permissionStatus) {
+    if (permissionStatus == PermissionStatus.denied) {
+      final snackBar = SnackBar(
+        content: Text(
+          'Access to contact data denied',
+          style: TextStyle(
+              color: Colors.white, fontSize: 8.sp, fontStyle: FontStyle.italic),
+        ),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    } else if (permissionStatus == PermissionStatus.permanentlyDenied) {
+      final snackBar = SnackBar(
+        content: Text(
+          'Contact data not available on device',
+          style: TextStyle(
+              color: Colors.white, fontSize: 8.sp, fontStyle: FontStyle.italic),
+        ),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+  }
+
+  Future<PermissionStatus> _getContactPermission() async {
+    PermissionStatus permission = await Permission.contacts.status;
+    if (permission != PermissionStatus.granted &&
+        permission != PermissionStatus.permanentlyDenied) {
+      PermissionStatus permissionStatus = await Permission.contacts.request();
+      return permissionStatus;
+    } else {
+      return permission;
+    }
   }
 
   @override
@@ -114,11 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
         width: 6.h,
         child: FloatingActionButton(
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const Contacts(),
-              ),
-            );
+            askPermission();
           },
           backgroundColor: mainColor,
           child: const Icon(
@@ -138,7 +183,7 @@ class _SliverAppDelegate extends SliverPersistentHeaderDelegate {
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Color.fromARGB(255, 22, 63, 59),
+      color: const Color.fromARGB(255, 22, 63, 59),
       child: tabBar,
     );
   }
